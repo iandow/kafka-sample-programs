@@ -44,7 +44,7 @@ public class Consumer {
             }
             consumer = new KafkaConsumer<>(properties);
         }
-        consumer.subscribe(Arrays.asList("/user/mapr/iantest3:fast-messages", "/user/mapr/iantest3:summary-markers"));
+        consumer.subscribe(Arrays.asList("fast-messages", "summary-markers"));
         int timeouts = 0;
 	Boolean quit = false;
         //noinspection InfiniteLoopStatement
@@ -59,7 +59,7 @@ public class Consumer {
             }
             for (ConsumerRecord<String, String> record : records) {
                 switch (record.topic()) {
-                    case "/user/mapr/iantest3:fast-messages":
+                    case "fast-messages":
                         // the send time is encoded inside the message
                         JsonNode msg = mapper.readTree(record.value());
                         switch (msg.get("type").asText()) {
@@ -89,7 +89,7 @@ data.printf("%d, %d, %d, %d, %d, %.1f, %d\n",record.value().length(), global.get
                                 throw new IllegalArgumentException("Illegal message type: " + msg.get("type"));
                         }
                         break;
-                    case "/user/mapr/iantest3:summary-markers":
+                    case "summary-markers":
                         break;
                     default:
                         throw new IllegalStateException("Shouldn't be possible to get message on topic " + record.topic());

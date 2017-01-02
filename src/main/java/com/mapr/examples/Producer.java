@@ -41,16 +41,16 @@ for (int length = 35000; length <= 37000; length += 500)  {
             for (int i = 0; i < 1000000; i++) {
                 // send lots of messages
                 producer.send(new ProducerRecord<String, String>(
-                        "/user/mapr/iantest3:fast-messages",
+                        "fast-messages",
                         String.format("{\"type\":\"test\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
 
                 // every so often send to a different topic
                 if (i % 1000 == 0) {
                     producer.send(new ProducerRecord<String, String>(
-                            "/user/mapr/iantest3:fast-messages",
+                            "fast-messages",
                         String.format("{\"type\":\"marker\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
                     producer.send(new ProducerRecord<String, String>(
-                            "/user/mapr/iantest3:summary-markers",
+                            "summary-markers",
                         String.format("{\"type\":\"other\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
                     producer.flush();
 //                    System.out.println("Sent msg number " + i + " with length " + length);
