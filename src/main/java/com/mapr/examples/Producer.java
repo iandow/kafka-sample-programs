@@ -28,9 +28,8 @@ public class Producer {
 	 */
 
         try {
-//for (int length = 5000; length <= 500000; length += 500)  {
-for (int length = 35000; length <= 37000; length += 500)  {
-    	// Java chars are 2 bytes
+for (int length = 5000; length <= 500000; length += 500)  {
+   	// Java chars are 2 bytes
   	StringBuilder sb = new StringBuilder(length/2);
 	sb.append('"');
  	for (int i=0; i<length/2; i++) {
