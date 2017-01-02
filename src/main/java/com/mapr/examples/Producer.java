@@ -23,31 +23,44 @@ public class Producer {
             properties.load(props);
             producer = new KafkaProducer<>(properties);
         }
+	/**
+	 * Create a message of size msgSize in bytes
+	 */
 
         try {
+//for (int length = 5000; length <= 500000; length += 500)  {
+for (int length = 35000; length <= 37000; length += 500)  {
+    	// Java chars are 2 bytes
+  	StringBuilder sb = new StringBuilder(length/2);
+	sb.append('"');
+ 	for (int i=0; i<length/2; i++) {
+		sb.append('a');
+    	}
+	sb.append('"');
+
             for (int i = 0; i < 1000000; i++) {
                 // send lots of messages
                 producer.send(new ProducerRecord<String, String>(
-                        "fast-messages",
-                        String.format("{\"type\":\"test\", \"t\":%.3f, \"k\":%d}", System.nanoTime() * 1e-9, i)));
+                        "/user/mapr/iantest3:fast-messages",
+                        String.format("{\"type\":\"test\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
 
                 // every so often send to a different topic
                 if (i % 1000 == 0) {
                     producer.send(new ProducerRecord<String, String>(
-                            "fast-messages",
-                            String.format("{\"type\":\"marker\", \"t\":%.3f, \"k\":%d}", System.nanoTime() * 1e-9, i)));
+                            "/user/mapr/iantest3:fast-messages",
+                        String.format("{\"type\":\"marker\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
                     producer.send(new ProducerRecord<String, String>(
-                            "summary-markers",
-                            String.format("{\"type\":\"other\", \"t\":%.3f, \"k\":%d}", System.nanoTime() * 1e-9, i)));
+                            "/user/mapr/iantest3:summary-markers",
+                        String.format("{\"type\":\"other\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
                     producer.flush();
-                    System.out.println("Sent msg number " + i);
+//                    System.out.println("Sent msg number " + i + " with length " + length);
                 }
             }
+}
         } catch (Throwable throwable) {
             System.out.printf("%s", throwable.getStackTrace());
         } finally {
             producer.close();
         }
-
     }
 }

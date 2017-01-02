@@ -13,6 +13,9 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Properties;
 import java.util.Random;
+import java.io.PrintWriter;
+import java.io.File;
+
 
 /**
  * This program reads messages from two topics. Messages on "fast-messages" are analyzed
@@ -21,11 +24,15 @@ import java.util.Random;
  * Whenever a message is received on "slow-messages", the stats are dumped.
  */
 public class Consumer {
+    private static PrintWriter data;
     public static void main(String[] args) throws IOException {
         // set up house-keeping
         ObjectMapper mapper = new ObjectMapper();
         Histogram stats = new Histogram(1, 10000000, 2);
         Histogram global = new Histogram(1, 10000000, 2);
+
+	data = new PrintWriter(new File("latency.csv"));
+        data.printf("msgSize, total_msg_count, batchSize, batchLatency_min, batchLatency_max, batchLatency_avg, batchLatency_99th\n");
 
         // and the consumer
         KafkaConsumer<String, String> consumer;
@@ -37,21 +44,22 @@ public class Consumer {
             }
             consumer = new KafkaConsumer<>(properties);
         }
-        consumer.subscribe(Arrays.asList("fast-messages", "summary-markers"));
+        consumer.subscribe(Arrays.asList("/user/mapr/iantest3:fast-messages", "/user/mapr/iantest3:summary-markers"));
         int timeouts = 0;
+	Boolean quit = false;
         //noinspection InfiniteLoopStatement
-        while (true) {
+        while (quit!=true) {
             // read records with a short timeout. If we time out, we don't really care.
             ConsumerRecords<String, String> records = consumer.poll(200);
             if (records.count() == 0) {
                 timeouts++;
             } else {
-                System.out.printf("Got %d records after %d timeouts\n", records.count(), timeouts);
+                //System.out.printf("Got %d records after %d timeouts\n", records.count(), timeouts);
                 timeouts = 0;
             }
             for (ConsumerRecord<String, String> record : records) {
                 switch (record.topic()) {
-                    case "fast-messages":
+                    case "/user/mapr/iantest3:fast-messages":
                         // the send time is encoded inside the message
                         JsonNode msg = mapper.readTree(record.value());
                         switch (msg.get("type").asText()) {
@@ -63,6 +71,7 @@ public class Consumer {
                             case "marker":
                                 // whenever we get a marker message, we should dump out the stats
                                 // note that the number of fast messages won't necessarily be quite constant
+/*
                                 System.out.printf("%d messages received in period, latency(min, max, avg, 99%%) = %d, %d, %.1f, %d (ms)\n",
                                         stats.getTotalCount(),
                                         stats.getValueAtPercentile(0), stats.getValueAtPercentile(100),
@@ -71,19 +80,23 @@ public class Consumer {
                                         global.getTotalCount(),
                                         global.getValueAtPercentile(0), global.getValueAtPercentile(100),
                                         global.getMean(), global.getValueAtPercentile(99));
-
+*/
+data.printf("%d, %d, %d, %d, %d, %.1f, %d\n",record.value().length(), global.getTotalCount(), stats.getTotalCount(), stats.getValueAtPercentile(0), stats.getValueAtPercentile(100), stats.getMean(), stats.getValueAtPercentile(99));
+//System.out.printf("%d, %d, %d, %d, %d, %.1f, %d\n",record.value().length(), global.getTotalCount(), stats.getTotalCount(), stats.getValueAtPercentile(0), stats.getValueAtPercentile(100), stats.getMean(), stats.getValueAtPercentile(99));
                                 stats.reset();
                                 break;
                             default:
                                 throw new IllegalArgumentException("Illegal message type: " + msg.get("type"));
                         }
                         break;
-                    case "summary-markers":
+                    case "/user/mapr/iantest3:summary-markers":
                         break;
                     default:
                         throw new IllegalStateException("Shouldn't be possible to get message on topic " + record.topic());
                 }
             }
+	data.flush();
         }
+data.close();
     }
 }
