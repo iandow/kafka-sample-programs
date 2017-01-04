@@ -7,12 +7,11 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-
+import java.lang.Thread;
 /**
- * This producer will send a bunch of messages to topic "fast-messages". Every so often,
- * it will send a message to "slow-messages". This shows how messages can be sent to
- * multiple topics. On the receiving end, we will see both kinds of messages but will
- * also see how the two topics aren't really synchronized.
+ * This producer will send messages to topic "fast-messages" with the send timestamp in the payload
+ * so that end-to-end latency can be calculated on the consumer. Send events are immediately flushed
+ * in order to effectively disable send buffering.
  */
 public class Producer {
     public static void main(String[] args) throws IOException {
@@ -23,40 +22,34 @@ public class Producer {
             properties.load(props);
             producer = new KafkaProducer<>(properties);
         }
-	/**
-	 * Create a message of size msgSize in bytes
-	 */
-
+        /**
+         * Create a message of size msgSize in bytes
+         */
         try {
-//for (int length = 5000; length <= 500000; length += 500)  {
-for (int length = 35000; length <= 37000; length += 500)  {
-    	// Java chars are 2 bytes
-  	StringBuilder sb = new StringBuilder(length/2);
-	sb.append('"');
- 	for (int i=0; i<length/2; i++) {
-		sb.append('a');
-    	}
-	sb.append('"');
+            int[] lengths = {10,100,500,1000,2000,4000,6000,8000,9000,10000,12000,14000,16000,18000,20000,25000,30000,40000,50000};
+            for (int length : lengths) {
+                // Java chars are 2 bytes
+                StringBuilder sb = new StringBuilder(length/2);
+                sb.append('"');
+                for (int i=0; i<length/2; i++) {
+                    sb.append('a');
+                }
+                sb.append('"');
 
-            for (int i = 0; i < 1000000; i++) {
-                // send lots of messages
-                producer.send(new ProducerRecord<String, String>(
-                        "fast-messages",
-                        String.format("{\"type\":\"test\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
-
-                // every so often send to a different topic
-                if (i % 1000 == 0) {
+                for (int i = 1; i <= 10; i++) {
+                    Thread.sleep(1000);
                     producer.send(new ProducerRecord<String, String>(
                             "fast-messages",
-                        String.format("{\"type\":\"marker\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
-                    producer.send(new ProducerRecord<String, String>(
-                            "summary-markers",
-                        String.format("{\"type\":\"other\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
+                            String.format("{\"type\":\"test\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
                     producer.flush();
-//                    System.out.println("Sent msg number " + i + " with length " + length);
+                    Thread.sleep(1000);
+                    //if (i % 1000 == 0) {
+                    producer.send(new ProducerRecord<String, String>(
+                            "fast-messages",
+                            String.format("{\"type\":\"marker\", \"t\":%.3f, \"k\":%d, \"filler\":%s}", System.nanoTime() * 1e-9, i, sb)));
+                    producer.flush();
                 }
             }
-}
         } catch (Throwable throwable) {
             System.out.printf("%s", throwable.getStackTrace());
         } finally {
